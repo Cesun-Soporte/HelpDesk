@@ -226,6 +226,7 @@ app.post('/api/tickets', verifyToken, async (req, res) => {
       }
     }
 
+    io.emit('ticket_created', { ticketId, title, category, priority });
     res.json({ id: ticketId, message: 'Ticket creado' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -335,6 +336,8 @@ app.patch('/api/tickets/:id', verifyToken, async (req, res) => {
         const ticketInfo = ticketInfoResult.rows[0];
         sendStatusChangeEmail(ticketInfo.email, ticketInfo.name, ticketId, ticketInfo.title, oldStatus, status);
       }
+
+      io.emit('status_changed', { ticketId, oldStatus, newStatus: status });
     }
 
     res.json({ message: 'Ticket actualizado' });

@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, BarChart3, MessageSquare, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { Plus, BarChart3, MessageSquare, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 function Dashboard({ user }) {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
-  const [stats, setStats] = useState({ open: 0, attended: 0, cancelled: 0 });
+  const [stats, setStats] = useState({ open: 0, attended: 0, cancelled: 0, closed: 0 });
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const socketRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -16,25 +19,55 @@ function Dashboard({ user }) {
     priority: 'normal'
   });
 
-  useEffect(() => {
-    fetchTickets();
-  }, []);
-
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
+      setIsRefreshing(true);
       const response = await axios.get('/api/tickets');
       setTickets(response.data);
       
       const statsData = {
         open: response.data.filter(t => t.status === 'abierto').length,
-        attended: response.data.filter(t => t.status === 'atendido').length,
-        cancelled: response.data.filter(t => t.status === 'cancelado').length
+        attended: response.data.filter(t => t.status === 'en proceso').length,
+        cancelled: response.data.filter(t => t.status === 'cancelado').length,
+        closed: response.data.filter(t => t.status === 'cerrado').length
       };
       setStats(statsData);
     } catch (error) {
       console.error('Error fetching tickets:', error);
+    } finally {
+      setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTickets();
+
+    socketRef.current = io('http://localhost:5000');
+
+    socketRef.current.on('connect', () => {
+      console.log('Connected to WebSocket');
+      socketRef.current.emit('join_dashboard');
+    });
+
+    socketRef.current.on('ticket_updated', () => {
+      fetchTickets();
+    });
+
+    socketRef.current.on('ticket_created', () => {
+      fetchTickets();
+    });
+
+    socketRef.current.on('status_changed', () => {
+      fetchTickets();
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.emit('leave_dashboard');
+        socketRef.current.disconnect();
+      }
+    };
+  }, [fetchTickets]);
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
@@ -120,7 +153,23 @@ function Dashboard({ user }) {
         </div>
 
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Mis Tickets</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-gray-800">
+              {user.role === 'admin' ? 'Todos los Tickets' : 'Mis Tickets'}
+            </h2>
+            <button
+              onClick={fetchTickets}
+              disabled={isRefreshing}
+              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+              title="Actualizar lista de tickets"
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+            </button>
+            <span className="text-sm text-gray-500">
+              Actualización automática en tiempo real
+            </span>
+          </div>
           {user.role !== 'admin' && (
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
