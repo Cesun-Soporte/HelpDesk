@@ -153,7 +153,7 @@ app.post('/api/auth/google', async (req, res) => {
 
     const domain = email.split('@')[1];
     if (!ALLOWED_DOMAINS.includes(domain)) {
-      return res.status(403).json({ error: 'Dominio no autorizado' });
+      return res.status(403).json({ error: 'Dominio no autorizado. Solo se permiten dominios: ' + ALLOWED_DOMAINS.join(', ') });
     }
 
     let role = 'estudiante';
@@ -171,9 +171,10 @@ app.post('/api/auth/google', async (req, res) => {
     if (userResult.rows.length > 0) {
       user = userResult.rows[0];
       await pool.query(
-        'UPDATE users SET googleId = $1 WHERE email = $2',
-        [googleId, email]
+        'UPDATE users SET googleId = $1, name = $2 WHERE email = $3',
+        [googleId, name, email]
       );
+      user = { ...user, name };
     } else {
       const userId = uuidv4();
       await pool.query(
