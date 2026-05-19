@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Filter, MessageSquare } from 'lucide-react';
@@ -11,16 +11,16 @@ function TicketList({ user }) {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       const response = await axios.get('/api/tickets');
       setTickets(response.data);
     } catch (error) {
       console.error('Error fetching tickets:', error);
     }
-  };
+  }, []);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = tickets;
 
     if (selectedCategory) {
@@ -32,15 +32,15 @@ function TicketList({ user }) {
     }
 
     setFilteredTickets(filtered);
-  };
+  }, [tickets, selectedCategory, selectedStatus]);
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+  }, [fetchTickets]);
 
   useEffect(() => {
     applyFilters();
-  }, [tickets, selectedCategory, selectedStatus]);
+  }, [applyFilters]);
 
   const getStatusColor = (status) => {
     switch(status) {

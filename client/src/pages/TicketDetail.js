@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -19,35 +19,7 @@ function TicketDetail({ user }) {
   const [pendingStatusChange, setPendingStatusChange] = useState(null);
   const messagesEndRef = useRef(null);
 
-  const fetchTicket = async () => {
-    try {
-      const response = await axios.get(`/api/tickets/${id}`);
-      setTicket(response.data);
-      calculateMetrics(response.data);
-    } catch (error) {
-      console.error('Error fetching ticket:', error);
-    }
-  };
-
-  const fetchMessages = async () => {
-    try {
-      const response = await axios.get(`/api/tickets/${id}/messages`);
-      setMessages(response.data);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    }
-  };
-
-  const fetchHistory = async () => {
-    try {
-      const response = await axios.get(`/api/tickets/${id}/history`);
-      setHistory(response.data);
-    } catch (error) {
-      console.error('Error fetching history:', error);
-    }
-  };
-
-  const calculateMetrics = (ticketData) => {
+  const calculateMetrics = useCallback((ticketData) => {
     if (ticketData.firstResponseAt) {
       const responseTime = new Date(ticketData.firstResponseAt) - new Date(ticketData.createdAt);
       const hours = Math.floor(responseTime / (1000 * 60 * 60));
@@ -57,7 +29,35 @@ function TicketDetail({ user }) {
         firstResponseAt: ticketData.firstResponseAt
       });
     }
-  };
+  }, []);
+
+  const fetchTicket = useCallback(async () => {
+    try {
+      const response = await axios.get(`/api/tickets/${id}`);
+      setTicket(response.data);
+      calculateMetrics(response.data);
+    } catch (error) {
+      console.error('Error fetching ticket:', error);
+    }
+  }, [id, calculateMetrics]);
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const response = await axios.get(`/api/tickets/${id}/messages`);
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  }, [id]);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const response = await axios.get(`/api/tickets/${id}/history`);
+      setHistory(response.data);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    }
+  }, [id]);
 
   useEffect(() => {
     fetchTicket();
@@ -81,7 +81,7 @@ function TicketDetail({ user }) {
       newSocket.emit('leave_ticket', id);
       newSocket.disconnect();
     };
-  }, [id]);
+  }, [id, fetchTicket, fetchMessages, fetchHistory]);
 
   useEffect(() => {
     scrollToBottom();
