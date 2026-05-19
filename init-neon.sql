@@ -6,11 +6,14 @@ CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
-  role VARCHAR(50) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'estudiante',
   area VARCHAR(255),
   puesto VARCHAR(255),
   googleId VARCHAR(255) UNIQUE,
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  status VARCHAR(50) DEFAULT 'pending',
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  approvedAt TIMESTAMP,
+  approvedBy VARCHAR(36)
 );
 
 -- Crear tabla de tickets

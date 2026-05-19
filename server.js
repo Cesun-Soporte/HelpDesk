@@ -157,8 +157,11 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     let role = 'estudiante';
+    let status = 'pending';
+    
     if (email === ADMIN_EMAIL) {
       role = 'admin';
+      status = 'approved';
     } else if (email.includes('docente') || email.includes('profesor')) {
       role = 'docente';
     } else if (email.includes('administrativo') || email.includes('admin')) {
@@ -178,10 +181,24 @@ app.post('/api/auth/google', async (req, res) => {
     } else {
       const userId = uuidv4();
       await pool.query(
-        'INSERT INTO users (id, email, name, role, googleId) VALUES ($1, $2, $3, $4, $5)',
-        [userId, email, name, role, googleId]
+        'INSERT INTO users (id, email, name, role, googleId, status) VALUES ($1, $2, $3, $4, $5, $6)',
+        [userId, email, name, role, googleId, status]
       );
-      user = { id: userId, email, name, role };
+      user = { id: userId, email, name, role, status };
+    }
+
+    if (user.status === 'pending') {
+      return res.status(403).json({ 
+        error: 'Tu cuenta está pendiente de aprobación. Los administradores la revisarán pronto.',
+        status: 'pending'
+      });
+    }
+
+    if (user.status === 'rejected') {
+      return res.status(403).json({ 
+        error: 'Tu cuenta ha sido rechazada. Contacta con los administradores.',
+        status: 'rejected'
+      });
     }
 
     const jwtToken = jwt.sign(
@@ -199,11 +216,79 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.get('/api/user', verifyToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, email, name, role, area, puesto FROM users WHERE id = $1', [req.user.id]);
+    const result = await pool.query('SELECT id, email, name, role, area, puesto, status FROM users WHERE id = $1', [req.user.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
     res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/users', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const result = await pool.query('SELECT id, email, name, role, status, createdAt, approvedAt FROM users ORDER BY createdAt DESC');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/admin/users/:userId/approve', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const { role } = req.body;
+    const userId = req.params.userId;
+
+    await pool.query(
+      'UPDATE users SET status = $1, role = $2, approvedAt = CURRENT_TIMESTAMP, approvedBy = $3 WHERE id = $4',
+      ['approved', role || 'estudiante', req.user.id, userId]
+    );
+
+    res.json({ message: 'Usuario aprobado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/admin/users/:userId/reject', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const userId = req.params.userId;
+
+    await pool.query(
+      'UPDATE users SET status = $1, approvedAt = CURRENT_TIMESTAMP, approvedBy = $2 WHERE id = $3',
+      ['rejected', req.user.id, userId]
+    );
+
+    res.json({ message: 'Usuario rechazado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/admin/users/:userId/role', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const { role } = req.body;
+    const userId = req.params.userId;
+
+    await pool.query(
+      'UPDATE users SET role = $1 WHERE id = $2',
+      [role, userId]
+    );
+
+    res.json({ message: 'Rol actualizado' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
