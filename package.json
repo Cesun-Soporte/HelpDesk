@@ -7,10 +7,10 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node server.js",
     "client": "cd client && npm start",
-    "build": "cd client && npm run build",
+    "build": "cd client && npm install && npm run build",
     "start": "node server.js",
     "init-db": "node init-db.js",
-    "vercel-build": "cd client && npm run build"
+    "vercel-build": "npm --prefix client install && npm --prefix client run build"
   },
   "dependencies": {
     "cors": "^2.8.5",
