@@ -11,14 +11,6 @@ function TicketList({ user }) {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
 
-  useEffect(() => {
-    fetchTickets();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [tickets, selectedCategory, selectedStatus]);
-
   const fetchTickets = async () => {
     try {
       const response = await axios.get('/api/tickets');
@@ -41,6 +33,14 @@ function TicketList({ user }) {
 
     setFilteredTickets(filtered);
   };
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [tickets, selectedCategory, selectedStatus]);
 
   const getStatusColor = (status) => {
     switch(status) {

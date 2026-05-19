@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { Send, ArrowLeft, Clock, User, MessageSquare, History, RotateCcw, AlertCircle } from 'lucide-react';
+import { Send, ArrowLeft, Clock, User, MessageSquare, History, RotateCcw } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 function TicketDetail({ user }) {
@@ -13,12 +13,51 @@ function TicketDetail({ user }) {
   const [history, setHistory] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState(null);
   const [activeTab, setActiveTab] = useState('chat');
   const [reopening, setReopening] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState(null);
   const messagesEndRef = useRef(null);
+
+  const fetchTicket = async () => {
+    try {
+      const response = await axios.get(`/api/tickets/${id}`);
+      setTicket(response.data);
+      calculateMetrics(response.data);
+    } catch (error) {
+      console.error('Error fetching ticket:', error);
+    }
+  };
+
+  const fetchMessages = async () => {
+    try {
+      const response = await axios.get(`/api/tickets/${id}/messages`);
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const response = await axios.get(`/api/tickets/${id}/history`);
+      setHistory(response.data);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    }
+  };
+
+  const calculateMetrics = (ticketData) => {
+    if (ticketData.firstResponseAt) {
+      const responseTime = new Date(ticketData.firstResponseAt) - new Date(ticketData.createdAt);
+      const hours = Math.floor(responseTime / (1000 * 60 * 60));
+      const minutes = Math.floor((responseTime % (1000 * 60 * 60)) / (1000 * 60));
+      setMetrics({
+        responseTimeFormatted: `${hours}h ${minutes}m`,
+        firstResponseAt: ticketData.firstResponseAt
+      });
+    }
+  };
 
   useEffect(() => {
     fetchTicket();
@@ -26,7 +65,6 @@ function TicketDetail({ user }) {
     fetchHistory();
 
     const newSocket = io('http://localhost:5000');
-    setSocket(newSocket);
 
     newSocket.on('connect', () => {
       newSocket.emit('join_ticket', id);
@@ -40,10 +78,8 @@ function TicketDetail({ user }) {
     });
 
     return () => {
-      if (newSocket) {
-        newSocket.emit('leave_ticket', id);
-        newSocket.disconnect();
-      }
+      newSocket.emit('leave_ticket', id);
+      newSocket.disconnect();
     };
   }, [id]);
 

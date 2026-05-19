@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, LogOut, BarChart3, MessageSquare, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, BarChart3, MessageSquare, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 function Dashboard({ user }) {
