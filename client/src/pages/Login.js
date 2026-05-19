@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
@@ -6,6 +6,20 @@ import axios from 'axios';
 function Login({ setUser }) {
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [googleClientId, setGoogleClientId] = useState('');
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await axios.get('/api/config');
+        setGoogleClientId(response.data.googleClientId);
+      } catch (err) {
+        console.error('Error fetching config:', err);
+        setError('Error cargando configuración');
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -46,12 +60,17 @@ function Login({ setUser }) {
           )}
 
           <div className="flex justify-center mb-6">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Error en login con Google')}
-              text="signin_with"
-              width="300"
-            />
+            {googleClientId ? (
+              <GoogleLogin
+                clientId={googleClientId}
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Error en login con Google')}
+                text="signin_with"
+                width="300"
+              />
+            ) : (
+              <p className="text-slate-600">Cargando...</p>
+            )}
           </div>
 
           <div className="text-center text-sm text-slate-600">

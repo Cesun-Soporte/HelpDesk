@@ -31,6 +31,13 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Servidor funcionando correctamente' });
 });
 
+app.get('/api/config', (req, res) => {
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/callback'
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || 'cesunbc.edu.mx,cesun.edu.mx').split(',').map(d => d.trim());
