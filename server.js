@@ -558,7 +558,7 @@ io.on('connection', (socket) => {
 });
 
 app.get('*', (req, res) => {
-  res.sendFile(__dirname + '/client/build/index.html');
+  res.sendFile(require('path').join(__dirname, 'client/build/index.html'));
 });
 
 server.listen(PORT, () => {
