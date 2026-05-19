@@ -25,6 +25,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('client/build'));
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Servidor funcionando correctamente' });
+});
+
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || 'cesunbc.edu.mx,cesun.edu.mx').split(',').map(d => d.trim());
