@@ -91,34 +91,6 @@ function TicketDetail({ user }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const fetchTicket = async () => {
-    try {
-      const response = await axios.get(`/api/tickets/${id}`);
-      setTicket(response.data);
-    } catch (error) {
-      console.error('Error fetching ticket:', error);
-    }
-  };
-
-  const fetchMessages = async () => {
-    try {
-      const response = await axios.get(`/api/tickets/${id}/messages`);
-      setMessages(response.data);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    }
-  };
-
-  const fetchHistory = async () => {
-    try {
-      const response = await axios.get(`/api/tickets/${id}/history`);
-      setHistory(response.data.history);
-      setMetrics(response.data.metrics);
-    } catch (error) {
-      console.error('Error fetching history:', error);
-    }
-  };
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
