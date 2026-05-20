@@ -5,9 +5,9 @@
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(255),
   role VARCHAR(50) NOT NULL DEFAULT 'estudiante',
-  area VARCHAR(255),
+  departamento VARCHAR(255),
   puesto VARCHAR(255),
   googleId VARCHAR(255) UNIQUE,
   status VARCHAR(50) DEFAULT 'pending',

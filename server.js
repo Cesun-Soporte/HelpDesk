@@ -299,6 +299,59 @@ app.patch('/api/admin/users/:userId/role', verifyToken, async (req, res) => {
   }
 });
 
+app.post('/api/admin/users/import', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const { users } = req.body;
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ error: 'Se requiere un array de usuarios' });
+    }
+
+    const results = {
+      created: 0,
+      updated: 0,
+      errors: []
+    };
+
+    for (const userData of users) {
+      try {
+        const { email, departamento, puesto, rol } = userData;
+
+        if (!email || !rol) {
+          results.errors.push({ email, error: 'Email y rol son requeridos' });
+          continue;
+        }
+
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+
+        if (userResult.rows.length > 0) {
+          await pool.query(
+            'UPDATE users SET role = $1, departamento = $2, puesto = $3 WHERE email = $4',
+            [rol, departamento || null, puesto || null, email]
+          );
+          results.updated++;
+        } else {
+          const userId = uuidv4();
+          await pool.query(
+            'INSERT INTO users (id, email, role, departamento, puesto, status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [userId, email, rol, departamento || null, puesto || null, 'pending']
+          );
+          results.created++;
+        }
+      } catch (err) {
+        results.errors.push({ email: userData.email, error: err.message });
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/tickets', verifyToken, async (req, res) => {
   try {
     const { title, description, category, priority } = req.body;
