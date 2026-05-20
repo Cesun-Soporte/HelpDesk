@@ -110,10 +110,37 @@ function UserManagement({ user }) {
   };
 
   const downloadTemplate = () => {
-    const template = 'email,rol,departamento,puesto\njuan@cesun.edu.mx,estudiante,,\nmaria@cesun.edu.mx,docente,,\nadmin@cesun.edu.mx,administrativo,Sistemas,Coordinador\n';
+    const template = 'email,rol,departamento,puesto\njuan@cesun.edu.mx,estudiante,,\nmaria@cesun.edu.mx,docente,Academico,Profesor\nadmin@cesun.edu.mx,administrativo,Sistemas,Coordinador\ncoord.ti@cesun.edu.mx,admin,TI,Jefe de TI\n';
     const element = document.createElement('a');
     element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(template));
     element.setAttribute('download', 'usuarios_template.csv');
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const downloadExistingUsers = () => {
+    if (users.length === 0) {
+      alert('No hay usuarios para descargar');
+      return;
+    }
+
+    const headers = ['email', 'nombre', 'rol', 'departamento', 'puesto'];
+    const csvContent = [
+      headers.join(','),
+      ...users.map(u => [
+        u.email,
+        u.name || '',
+        u.role,
+        u.departamento || '',
+        u.puesto || ''
+      ].map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csvContent));
+    element.setAttribute('download', `usuarios_cesun_${new Date().toISOString().split('T')[0]}.csv`);
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
@@ -213,13 +240,22 @@ function UserManagement({ user }) {
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Gestión de Usuarios</h1>
               <p className="text-gray-600">Asigna roles, áreas y puestos a los usuarios</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={downloadTemplate}
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+                title="Descargar template de ejemplo con datos completos"
               >
                 <Download className="w-5 h-5" />
-                Descargar Template
+                Template
+              </button>
+              <button
+                onClick={downloadExistingUsers}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition"
+                title="Descargar todos los usuarios existentes en CSV"
+              >
+                <Download className="w-5 h-5" />
+                Descargar Usuarios
               </button>
               <button
                 onClick={() => setShowImport(!showImport)}
