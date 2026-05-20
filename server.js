@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const XLSX = require('xlsx');
 const {
   initializeEmailService,
   sendTicketCreatedEmail,
@@ -14,6 +16,8 @@ const {
   sendAdminNotificationEmail
 } = require('./emailService');
 require('dotenv').config();
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
 const server = http.createServer(app);
@@ -352,17 +356,87 @@ app.post('/api/admin/users/import', verifyToken, async (req, res) => {
   }
 });
 
+app.post('/api/admin/users/import-excel', verifyToken, upload.single('file'), async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó archivo' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet);
+
+    if (data.length === 0) {
+      return res.status(400).json({ error: 'El archivo Excel está vacío' });
+    }
+
+    const results = {
+      created: 0,
+      updated: 0,
+      errors: []
+    };
+
+    for (const row of data) {
+      try {
+        const email = row.email?.trim();
+        const rol = row.rol?.trim();
+        const departamento = row.departamento?.trim() || null;
+        const puesto = row.puesto?.trim() || null;
+
+        if (!email || !rol) {
+          results.errors.push({ email: email || 'sin email', error: 'Email y rol son requeridos' });
+          continue;
+        }
+
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+
+        if (userResult.rows.length > 0) {
+          await pool.query(
+            'UPDATE users SET role = $1, departamento = $2, puesto = $3 WHERE email = $4',
+            [rol, departamento, puesto, email]
+          );
+          results.updated++;
+        } else {
+          const userId = uuidv4();
+          await pool.query(
+            'INSERT INTO users (id, email, role, departamento, puesto, status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [userId, email, rol, departamento, puesto, 'pending']
+          );
+          results.created++;
+        }
+      } catch (err) {
+        results.errors.push({ email: row.email || 'sin email', error: err.message });
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/tickets', verifyToken, async (req, res) => {
   try {
-    const { title, description, category, priority } = req.body;
+    const { title, description, category, priority, userId } = req.body;
     const ticketId = uuidv4();
+    
+    let targetUserId = req.user.id;
+    
+    if (userId && req.user.role === 'admin') {
+      targetUserId = userId;
+    }
 
     await pool.query(
       'INSERT INTO tickets (id, userId, title, description, category, priority) VALUES ($1, $2, $3, $4, $5, $6)',
-      [ticketId, req.user.id, title, description, category, priority || 'normal']
+      [ticketId, targetUserId, title, description, category, priority || 'normal']
     );
 
-    const userResult = await pool.query('SELECT email, name FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await pool.query('SELECT email, name FROM users WHERE id = $1', [targetUserId]);
     if (userResult.rows.length > 0) {
       const user = userResult.rows[0];
       sendTicketCreatedEmail(user.email, user.name, ticketId, title, description);
