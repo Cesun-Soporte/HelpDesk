@@ -7,13 +7,15 @@ import Navbar from '../components/Navbar';
 function Dashboard({ user }) {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
+  const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({ open: 0, attended: 0, cancelled: 0, closed: 0 });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: 'general',
-    priority: 'normal'
+    priority: 'normal',
+    userId: ''
   });
 
   const fetchTickets = useCallback(async () => {
@@ -30,6 +32,15 @@ function Dashboard({ user }) {
       setStats(statsData);
     } catch (error) {
       console.error('Error fetching tickets:', error);
+    }
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const response = await axios.get('/api/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
     }
   }, []);
 
@@ -132,21 +143,42 @@ function Dashboard({ user }) {
               Actualización en tiempo real
             </span>
           </div>
-          {user.role !== 'admin' && (
-            <button
-              onClick={() => setShowCreateForm(!showCreateForm)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition"
-            >
-              <Plus className="w-5 h-5" />
-              Nuevo Ticket
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setShowCreateForm(!showCreateForm);
+              if (!showCreateForm && user.role === 'admin') {
+                fetchUsers();
+              }
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition"
+          >
+            <Plus className="w-5 h-5" />
+            {user.role === 'admin' ? 'Crear Ticket' : 'Nuevo Ticket'}
+          </button>
         </div>
 
         {showCreateForm && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h3 className="text-xl font-bold mb-4">Crear Nuevo Ticket</h3>
             <form onSubmit={handleCreateTicket} className="space-y-4">
+              {user.role === 'admin' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Crear para (Usuario)</label>
+                  <select
+                    value={formData.userId}
+                    onChange={(e) => setFormData({...formData, userId: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">-- Yo mismo (Admin) --</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.email} ({u.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
                 <input
