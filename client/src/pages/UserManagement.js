@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Edit2, Save, X, Upload, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, X, Upload, Download, CheckCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 function UserManagement({ user }) {
