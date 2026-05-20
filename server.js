@@ -32,8 +32,13 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/config', (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    console.error('ERROR: GOOGLE_CLIENT_ID no está configurado');
+    return res.status(500).json({ error: 'GOOGLE_CLIENT_ID no configurado en el servidor' });
+  }
   res.json({
-    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleClientId: clientId,
     googleCallbackUrl: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/callback'
   });
 });
