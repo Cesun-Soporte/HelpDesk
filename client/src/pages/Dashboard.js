@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { io } from 'socket.io-client';
 import { Plus, BarChart3, MessageSquare, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
@@ -11,7 +10,6 @@ function Dashboard({ user }) {
   const [stats, setStats] = useState({ open: 0, attended: 0, cancelled: 0, closed: 0 });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const socketRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -41,32 +39,9 @@ function Dashboard({ user }) {
 
   useEffect(() => {
     fetchTickets();
-
-    socketRef.current = io('http://localhost:5000');
-
-    socketRef.current.on('connect', () => {
-      console.log('Connected to WebSocket');
-      socketRef.current.emit('join_dashboard');
-    });
-
-    socketRef.current.on('ticket_updated', () => {
-      fetchTickets();
-    });
-
-    socketRef.current.on('ticket_created', () => {
-      fetchTickets();
-    });
-
-    socketRef.current.on('status_changed', () => {
-      fetchTickets();
-    });
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.emit('leave_dashboard');
-        socketRef.current.disconnect();
-      }
-    };
+    const interval = setInterval(fetchTickets, 30000);
+    
+    return () => clearInterval(interval);
   }, [fetchTickets]);
 
   const handleCreateTicket = async (e) => {

@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
 const {
   initializeEmailService,
   sendTicketCreatedEmail,
@@ -14,6 +15,8 @@ const {
   sendAdminNotificationEmail
 } = require('./emailService');
 require('dotenv').config();
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
 const server = http.createServer(app);
@@ -343,6 +346,81 @@ app.post('/api/admin/users/import', verifyToken, async (req, res) => {
         }
       } catch (err) {
         results.errors.push({ email: userData.email, error: err.message });
+      }
+    }
+
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/users/import-file', verifyToken, upload.single('file'), async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó archivo' });
+    }
+
+    const fileContent = req.file.buffer.toString('utf-8');
+    const lines = fileContent.trim().split('\n');
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'El archivo está vacío' });
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const users = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const values = lines[i].split(',').map(v => v.trim());
+      const userData = {};
+      headers.forEach((header, idx) => {
+        userData[header] = values[idx] || '';
+      });
+      users.push(userData);
+    }
+
+    const results = {
+      created: 0,
+      updated: 0,
+      errors: []
+    };
+
+    for (const userData of users) {
+      try {
+        const email = userData.email?.trim();
+        const rol = userData.rol?.trim();
+        const departamento = userData.departamento?.trim() || null;
+        const puesto = userData.puesto?.trim() || null;
+
+        if (!email || !rol) {
+          results.errors.push({ email: email || 'sin email', error: 'Email y rol son requeridos' });
+          continue;
+        }
+
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+
+        if (userResult.rows.length > 0) {
+          await pool.query(
+            'UPDATE users SET role = $1, departamento = $2, puesto = $3 WHERE email = $4',
+            [rol, departamento, puesto, email]
+          );
+          results.updated++;
+        } else {
+          const userId = uuidv4();
+          await pool.query(
+            'INSERT INTO users (id, email, role, departamento, puesto, status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [userId, email, rol, departamento, puesto, 'pending']
+          );
+          results.created++;
+        }
+      } catch (err) {
+        results.errors.push({ email: userData.email || 'sin email', error: err.message });
       }
     }
 

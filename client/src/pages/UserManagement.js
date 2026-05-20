@@ -15,6 +15,7 @@ function UserManagement({ user }) {
   const [showImport, setShowImport] = useState(false);
   const [importData, setImportData] = useState('');
   const [importResults, setImportResults] = useState(null);
+  const [importMode, setImportMode] = useState('paste');
 
   useEffect(() => {
     if (user?.role !== 'admin') {
@@ -116,6 +117,37 @@ function UserManagement({ user }) {
     document.body.removeChild(element);
   };
 
+  const handleFileUpload = async (e) => {
+    try {
+      setError('');
+      setSuccess('');
+      const file = e.target.files[0];
+      
+      if (!file) {
+        setError('No se seleccionó archivo');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await axios.post('/api/admin/users/import-file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setImportResults(response.data);
+      setSuccess(`Importación completada: ${response.data.created} creados, ${response.data.updated} actualizados`);
+      fetchUsers();
+      setTimeout(() => {
+        setShowImport(false);
+        setImportResults(null);
+        setImportMode('paste');
+      }, 3000);
+    } catch (err) {
+      setError('Error importando archivo: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -178,38 +210,90 @@ function UserManagement({ user }) {
 
         {showImport && (
           <div className="bg-white rounded-lg shadow p-6 mb-6 border-2 border-blue-200">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Importar Usuarios desde CSV</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pega el contenido del CSV (email, rol, departamento, puesto):
-              </label>
-              <textarea
-                value={importData}
-                onChange={(e) => setImportData(e.target.value)}
-                placeholder="email,rol,departamento,puesto&#10;juan@cesun.edu.mx,estudiante,,&#10;maria@cesun.edu.mx,docente,,"
-                className="w-full h-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-              />
-            </div>
-            <div className="flex gap-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Importar Usuarios</h2>
+            
+            <div className="flex gap-4 mb-6">
               <button
-                onClick={handleImport}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+                onClick={() => setImportMode('paste')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  importMode === 'paste'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                <CheckCircle className="w-5 h-5" />
-                Importar
+                📋 Pegar CSV
               </button>
               <button
-                onClick={() => {
-                  setShowImport(false);
-                  setImportData('');
-                  setImportResults(null);
-                }}
-                className="flex items-center gap-2 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition"
+                onClick={() => setImportMode('file')}
+                className={`px-4 py-2 rounded-lg font-medium transition ${
+                  importMode === 'file'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
               >
-                <X className="w-5 h-5" />
-                Cancelar
+                📁 Cargar Archivo
               </button>
             </div>
+
+            {importMode === 'paste' ? (
+              <div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pega el contenido del CSV (email, rol, departamento, puesto):
+                  </label>
+                  <textarea
+                    value={importData}
+                    onChange={(e) => setImportData(e.target.value)}
+                    placeholder="email,rol,departamento,puesto&#10;juan@cesun.edu.mx,estudiante,,&#10;maria@cesun.edu.mx,docente,,"
+                    className="w-full h-40 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleImport}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Importar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowImport(false);
+                      setImportData('');
+                      setImportResults(null);
+                    }}
+                    className="flex items-center gap-2 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition"
+                  >
+                    <X className="w-5 h-5" />
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecciona archivo CSV:
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    setShowImport(false);
+                    setImportResults(null);
+                  }}
+                  className="flex items-center gap-2 bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                  Cancelar
+                </button>
+              </div>
+            )}
 
             {importResults && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
