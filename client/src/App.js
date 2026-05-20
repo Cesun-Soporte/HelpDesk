@@ -12,24 +12,36 @@ import axios from 'axios';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [googleClientId, setGoogleClientId] = useState('');
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      axios.get('/api/user')
-        .then(res => setUser(res.data))
-        .catch(() => {
-          localStorage.removeItem('token');
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const initApp = async () => {
+      try {
+        const configRes = await axios.get('/api/config');
+        setGoogleClientId(configRes.data.googleClientId);
+      } catch (err) {
+        console.error('Error fetching config:', err);
+      }
+
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        axios.get('/api/user')
+          .then(res => setUser(res.data))
+          .catch(() => {
+            localStorage.removeItem('token');
+            setUser(null);
+          })
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    };
+
+    initApp();
   }, []);
 
-  if (loading) {
+  if (loading || !googleClientId) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-500 to-purple-600">
         <div className="text-white text-2xl">Cargando...</div>
@@ -38,7 +50,7 @@ function App() {
   }
 
   return (
-    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || ''}>
+    <GoogleOAuthProvider clientId={googleClientId}>
       <Router>
         <Routes>
           <Route path="/login" element={<Login setUser={setUser} />} />
