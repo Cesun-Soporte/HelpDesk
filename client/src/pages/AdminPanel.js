@@ -28,10 +28,11 @@ function AdminPanel({ user }) {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('/api/dashboard');
-      setStats(response.data);
+      const response = await axios.get('/api/dashboard/stats');
+      setStats(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      setStats([]);
     }
   };
 
