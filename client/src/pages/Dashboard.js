@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, BarChart3, MessageSquare, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Plus, BarChart3, MessageSquare, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 function Dashboard({ user }) {
@@ -9,7 +9,6 @@ function Dashboard({ user }) {
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({ open: 0, attended: 0, cancelled: 0, closed: 0 });
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -19,7 +18,6 @@ function Dashboard({ user }) {
 
   const fetchTickets = useCallback(async () => {
     try {
-      setIsRefreshing(true);
       const response = await axios.get('/api/tickets');
       setTickets(response.data);
       
@@ -32,8 +30,6 @@ function Dashboard({ user }) {
       setStats(statsData);
     } catch (error) {
       console.error('Error fetching tickets:', error);
-    } finally {
-      setIsRefreshing(false);
     }
   }, []);
 
