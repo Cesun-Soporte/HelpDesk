@@ -132,17 +132,8 @@ function Dashboard({ user }) {
             <h2 className="text-2xl font-bold text-gray-800">
               {user.role === 'admin' ? 'Todos los Tickets' : 'Mis Tickets'}
             </h2>
-            <button
-              onClick={fetchTickets}
-              disabled={isRefreshing}
-              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
-              title="Actualizar lista de tickets"
-            >
-              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Actualizando...' : 'Actualizar'}
-            </button>
             <span className="text-sm text-gray-500">
-              Actualización automática en tiempo real
+              Actualización en tiempo real
             </span>
           </div>
           {user.role !== 'admin' && (
@@ -238,11 +229,11 @@ function Dashboard({ user }) {
             <table className="w-full">
               <thead className="bg-gray-100 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Título</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Categoría</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Estado</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Prioridad</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Fecha</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Acción</th>
                 </tr>
               </thead>
@@ -256,7 +247,6 @@ function Dashboard({ user }) {
                 ) : (
                   tickets.map(ticket => (
                     <tr key={ticket.id} className="border-b hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-600">{ticket.id.substring(0, 8)}</td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-800">{ticket.title}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{ticket.category}</td>
                       <td className="px-6 py-4">
@@ -266,6 +256,15 @@ function Dashboard({ user }) {
                       </td>
                       <td className={`px-6 py-4 text-sm font-semibold ${getPriorityColor(ticket.priority)}`}>
                         {ticket.priority}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(ticket.createdAt).toLocaleDateString('es-MX', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </td>
                       <td className="px-6 py-4">
                         <button
